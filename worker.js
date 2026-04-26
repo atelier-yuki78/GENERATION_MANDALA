@@ -1,4 +1,4 @@
-importScripts('https://cdn.jsdelivr.net/npm/swisseph@2.10.8-1/dist/swisseph.min.js');
+importScripts('./swisseph.min.js');
 
 const PLANETS = [
     swisseph.SE_SUN,
@@ -15,7 +15,8 @@ const PLANETS = [
     swisseph.SE_CHIRON
 ];
 
-swisseph.swe_set_ephe_path('https://cdn.jsdelivr.net/npm/swisseph@2.10.8-1/dist/ephe/');
+// 天文暦データが入っているフォルダを指定
+swisseph.swe_set_ephe_path('./ephe/');
 
 self.onmessage = function(e) {
     const { id, date, time, isUnknown } = e.data;
