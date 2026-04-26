@@ -15,8 +15,8 @@
         #sidebar { width: 360px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 25px; z-index: 10; }
         .gen-card { background: rgba(5,7,10,0.8); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 18px; position: relative; }
         .label { font-size: 0.65rem; color: var(--accent); margin-bottom: 4px; margin-top: 10px; display: block; }
-        input { background: #05070a; border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; color: white; }
-        .btn-calc { width: 100%; padding: 12px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        input { background: #05070a; border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; color: white; box-sizing: border-box; }
+        .btn-calc { width: 100%; padding: 14px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 0.9rem; }
         .btn-calc:hover { opacity: 0.8; }
         #viewport { flex: 1; display: flex; justify-content: center; align-items: center; background: #000; }
         svg { width: 95%; height: 95%; max-width: 800px; }
@@ -30,9 +30,9 @@
 <body>
 <div id="sidebar">
     <h1 style="font-size:1.1rem; color:var(--accent); letter-spacing:4px;">GENERATION MANDALA</h1>
-    <button class="btn-add" onclick="addGen()" style="width:100%; padding:10px; background:none; border:1px dashed var(--accent); color:var(--accent); margin-bottom:20px;">+ 世代を追加</button>
+    <button onclick="addGen()" style="width:100%; padding:10px; background:none; border:1px dashed var(--accent); color:var(--accent); margin-bottom:20px; border-radius:8px; cursor:pointer;">+ 世代を追加</button>
     <div id="gen-container"></div>
-    <button style="margin-top:20px; font-size:0.6rem; color:var(--text-dim); background:none; border:none;" onclick="clearAllData()">※全リセット</button>
+    <button style="margin-top:20px; font-size:0.6rem; color:var(--text-dim); background:none; border:none; cursor:pointer;" onclick="clearAllData()">※全リセット</button>
 </div>
 <div id="viewport">
     <svg id="mandala" viewBox="0 0 500 500">
@@ -49,22 +49,28 @@
         { id: 1, name: "", date: "", time: "12:00", isUnknown: false, hasData: false, planets: [] }
     ];
     
-    const worker = new Worker('worker.js?v=' + Date.now()); // キャッシュ回避策
+    // worker.js を呼び出す
+    let worker = new Worker('worker.js');
+    
     worker.onmessage = function(e) {
         const { id, planets } = e.data;
         const g = generations.find(x => x.id === id);
         if (g) {
-            g.planets = planets; g.hasData = true;
-            saveData(); renderUI(); updateMandala();
+            g.planets = planets;
+            g.hasData = true;
+            saveData();
+            renderUI();
+            updateMandala();
         }
     };
 
     function saveData() { localStorage.setItem('mandalaData', JSON.stringify(generations)); }
-    function clearAllData() { if(confirm("リセットしますか？")) { localStorage.removeItem('mandalaData'); location.reload(); } }
+    function clearAllData() { if(confirm("データをリセットしますか？")) { localStorage.removeItem('mandalaData'); location.reload(); } }
 
     function runCalc(id) {
         const g = generations.find(x => x.id === id);
         if (g && g.date) {
+            // ボタンを押した時に worker に計算を依頼する
             worker.postMessage({ id: g.id, date: g.date, time: g.time });
         } else {
             alert("日付を入力してください");
