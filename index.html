@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <title>GENERATION MANDALA NEO</title>
     <style>
-        @font-face { font-family: 'Astronomicon'; src: url('./fonts/Astronomicon.ttf') format('truetype'); }
+        @font-face { 
+            font-family: 'Astronomicon'; 
+            src: url('./fonts/Astronomicon.ttf') format('truetype'); 
+        }
         :root { 
             --bg: #030508; --panel: #0d121d; --accent: #00d4ff; --text: #e0e6ed;
             --text-dim: #4a5a70; --border: #1a2230; --ring-base: #1e2a3a;
@@ -23,9 +26,9 @@
         .remove-btn { position: absolute; top: 15px; right: 15px; color: #ff4d4d; cursor: pointer; border: 1px solid #ff4d4d33; background: rgba(255,77,77,0.1); border-radius: 4px; padding: 2px 8px; font-size: 0.6rem; }
         #viewport { flex: 1; display: flex; justify-content: center; align-items: center; background: #000; }
         svg { width: 95%; height: 95%; max-width: 800px; }
-        .astro-font { font-family: 'Astronomicon'; }
+        .astro-font { font-family: 'Astronomicon', sans-serif; }
         .sign-symbol { fill: #1e3a5f; font-size: 26px; }
-        .planet-symbol { font-size: 18px; filter: drop-shadow(0 0 5px currentColor); }
+        .planet-symbol { font-size: 20px; }
         .mandala-line { stroke: var(--ring-base); stroke-width: 1.2; fill: none; }
         .cusp-line { stroke: var(--ring-base); stroke-width: 1.2; }
     </style>
@@ -33,14 +36,16 @@
 <body>
 <div id="sidebar">
     <h1 style="font-size:1.1rem; color:var(--accent); letter-spacing:4px;">GENERATION MANDALA</h1>
-    <div class="notice-text">明治6年（1873年）以前の生年月日は旧暦のため、グレゴリウス暦に変換してから入力してください。</div>
+    <div class="notice-text">明治6年以前は旧暦のため、グレゴリウス暦に変換して入力してください。</div>
     <button class="btn-add" onclick="addGen()">+ 世代を追加</button>
     <div id="gen-container"></div>
     <button style="margin-top:20px; font-size:0.6rem; color:var(--text-dim); background:none; border:none; cursor:pointer;" onclick="clearAllData()">※全入力をリセット</button>
 </div>
 <div id="viewport">
     <svg id="mandala" viewBox="0 0 500 500">
-        <g id="rings-base"></g><g id="zodiac-layer"></g><g id="generation-layers"></g>
+        <g id="rings-base"></g>
+        <g id="zodiac-layer"></g>
+        <g id="generation-layers"></g>
     </svg>
 </div>
 
@@ -49,12 +54,10 @@
     const S_SYM = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const COLORS = ['#bf7fff', '#7f7fff', '#00d4ff', '#00ffa3', '#ffe57f', '#ff9f7f', '#ff7f9f'];
     
-    // オートセーブから読み込み
     let generations = JSON.parse(localStorage.getItem('mandalaData')) || [
         { id: 1, name: "", date: "", time: "12:00", isUnknown: false, city: "", hasData: false, planets: [] }
     ];
     
-    // 正しいファイル名になったworker.jsを呼び出し
     const worker = new Worker('worker.js');
     worker.onmessage = function(e) {
         const { id, planets } = e.data;
@@ -67,29 +70,19 @@
         }
     };
 
-    function saveData() {
-        localStorage.setItem('mandalaData', JSON.stringify(generations));
-    }
-
-    function clearAllData() {
-        if(confirm("データをすべて消して最初からやり直しますか？")) {
-            localStorage.removeItem('mandalaData');
-            location.reload();
-        }
-    }
+    function saveData() { localStorage.setItem('mandalaData', JSON.stringify(generations)); }
+    function clearAllData() { if(confirm("リセットしますか？")) { localStorage.removeItem('mandalaData'); location.reload(); } }
 
     function addGen() {
         if (generations.length >= 7) return;
         generations.push({ id: Date.now(), name: "", date: "", time: "12:00", isUnknown: false, city: "", hasData: false, planets: [] });
-        saveData();
-        renderUI();
+        saveData(); renderUI();
     }
 
     function removeGen(id) {
         if (generations.length <= 1) return;
         generations = generations.filter(g => g.id !== id);
-        saveData();
-        renderUI(); updateMandala();
+        saveData(); renderUI(); updateMandala();
     }
 
     function autoUpdate(id) {
@@ -101,10 +94,14 @@
     }
 
     function updateMandala() {
-        const ringsBase = document.getElementById('rings-base'), zodiacLayer = document.getElementById('zodiac-layer'), genLayers = document.getElementById('generation-layers');
+        const ringsBase = document.getElementById('rings-base'), 
+              zodiacLayer = document.getElementById('zodiac-layer'), 
+              genLayers = document.getElementById('generation-layers');
+        
         ringsBase.innerHTML = ''; zodiacLayer.innerHTML = ''; genLayers.innerHTML = '';
         const cx = 250, cy = 250, zR_out = 74, w = 24;
 
+        // 背景の円と境界線
         for (let i = 0; i <= 7; i++) {
             const r = zR_out + (i * w);
             const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -119,6 +116,7 @@
             l.setAttribute("x2", cx + 242 * Math.cos(rad)); l.setAttribute("y2", cy + 242 * Math.sin(rad));
             l.setAttribute("class", "cusp-line");
             ringsBase.appendChild(l);
+            
             const mRad = (180 - (i * 30 + 15)) * Math.PI / 180;
             const s = document.createElementNS("http://www.w3.org/2000/svg", "text");
             s.setAttribute("x", cx + 62 * Math.cos(mRad)); s.setAttribute("y", cy + 62 * Math.sin(mRad));
@@ -126,16 +124,21 @@
             s.textContent = S_SYM[i]; zodiacLayer.appendChild(s);
         }
 
+        // 天体の描画
         generations.forEach((g, idx) => {
-            if (!g.hasData) return;
+            if (!g.hasData || !g.planets.length) return;
             const r_c = zR_out + (idx * w) + w/2;
             g.planets.forEach((deg, pIdx) => {
                 const rad = (180 - deg) * Math.PI / 180;
                 const sym = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                sym.setAttribute("x", cx + r_c * Math.cos(rad)); sym.setAttribute("y", cy + r_c * Math.sin(rad));
-                sym.setAttribute("class", "astro-font planet-symbol"); sym.setAttribute("fill", COLORS[idx]);
-                sym.setAttribute("text-anchor", "middle"); sym.setAttribute("dominant-baseline", "middle");
-                sym.textContent = P_SYM[pIdx]; genLayers.appendChild(sym);
+                sym.setAttribute("x", cx + r_c * Math.cos(rad)); 
+                sym.setAttribute("y", cy + r_c * Math.sin(rad));
+                sym.setAttribute("class", "astro-font planet-symbol"); 
+                sym.setAttribute("fill", COLORS[idx]);
+                sym.setAttribute("text-anchor", "middle"); 
+                sym.setAttribute("dominant-baseline", "middle");
+                sym.textContent = P_SYM[pIdx]; 
+                genLayers.appendChild(sym);
             });
         });
     }
@@ -143,7 +146,7 @@
     function renderUI() {
         const container = document.getElementById('gen-container');
         container.innerHTML = generations.map((g, idx) => `
-            <div class="gen-card" style="border-left: 5px solid ${idx===0?COLORS[0]:(g.hasData?COLORS[idx]:'#1a2230')}">
+            <div class="gen-card" style="border-left: 5px solid ${g.hasData ? COLORS[idx] : '#4a5a70'}">
                 ${idx > 0 ? `<button class="remove-btn" onclick="removeGen(${g.id})">削除</button>` : ''}
                 <span class="label">名前</span>
                 <input type="text" value="${g.name||''}" placeholder="お名前" oninput="generations.find(x=>x.id===${g.id}).name=this.value; saveData()">
@@ -160,12 +163,7 @@
         `).join('');
     }
     
-    window.onload = () => { 
-        renderUI(); 
-        updateMandala();
-        // 保存されていたデータがあれば自動で計算させる
-        generations.forEach(g => { if(g.date) autoUpdate(g.id); });
-    };
+    window.onload = () => { renderUI(); updateMandala(); generations.forEach(g => { if(g.date) autoUpdate(g.id); }); };
 </script>
 </body>
 </html>
