@@ -4,18 +4,37 @@
     <meta charset="UTF-8">
     <title>GENERATION MANDALA</title>
     <style>
+        /* アストロノミコンの読み込み */
+        @font-face {
+            font-family: 'Astronomicon';
+            src: url('./Astronomicon.ttf') format('truetype');
+        }
+
         :root { --bg-color: #0a0a12; --text-color: #e0e0e0; --gray-line: #444; }
         body { background: var(--bg-color); color: var(--text-color); font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
         #ui-panel { width: 350px; padding: 20px; background: rgba(255,255,255,0.05); border-right: 1px solid #333; overflow-y: auto; }
+        
+        /* タイトル：色は変えず、元のデザインを維持 */
+        h1 { font-family: serif; font-weight: lighter; letter-spacing: 0.2em; color: #e0e0e0; margin-bottom: 5px; }
+
         #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #1a1a2e 0%, #0a0a12 100%); }
+        
         .input-group { margin-bottom: 15px; padding: 10px; border-radius: 8px; border-left: 5px solid var(--ring-color); background: rgba(255,255,255,0.02); }
         input { background: #222; border: 1px solid #444; color: white; padding: 5px; border-radius: 4px; width: 100%; box-sizing: border-box; margin-top: 5px; }
         button { width: 100%; padding: 12px; background: #4a4e69; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        button:hover { background: #9a8c98; }
+        
         svg { max-width: 90vh; max-height: 90vh; }
         .zodiac-ring { stroke: var(--gray-line); stroke-width: 1.5; fill: none; }
         .zodiac-line { stroke: var(--gray-line); stroke-width: 1; }
-        .zodiac-text { fill: #888; font-size: 10px; pointer-events: none; }
+        
+        /* 星座記号：Astronomiconを使用 */
+        .zodiac-symbol { 
+            font-family: 'Astronomicon'; 
+            fill: #888; 
+            font-size: 24px; 
+            pointer-events: none; 
+        }
     </style>
 </head>
 <body>
@@ -25,7 +44,6 @@
     <p style="font-size: 0.8em; color: #aaa;">1822年〜2068年の星の響き</p>
     <div id="inputs"></div>
     <button onclick="draw()">計算・更新</button>
-    <p style="font-size: 0.7em; margin-top:20px; color: #888;">※月は正午前後7時間の幅をアークで表示予定</p>
 </div>
 
 <div id="canvas-container">
@@ -36,15 +54,10 @@
 </div>
 
 <script>
-    const COLORS = [
-        "#8A2BE2", // 紫 (内側：ご先祖様)
-        "#4B0082", // 藍
-        "#0000FF", // 青
-        "#008000", // 緑
-        "#FFFF00", // 黄
-        "#FFA500", // 橙
-        "#FF0000"  // 赤 (外側：未来)
-    ];
+    const COLORS = ["#8A2BE2", "#4B0082", "#0000FF", "#008000", "#FFFF00", "#FFA500", "#FF0000"];
+    
+    // サインとAstronomiconの対応文字 (A=牡羊座, B=牡牛座...)
+    const SYMBOLS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
 
     const inputContainer = document.getElementById('inputs');
     for (let i = 0; i < 7; i++) {
@@ -61,7 +74,6 @@
 
     function initZodiac() {
         const base = document.getElementById('zodiac-base');
-        const signs = ["ARI", "TAU", "GEM", "CAN", "LEO", "VIR", "LIB", "SCO", "SAG", "CAP", "AQU", "PIS"];
         
         // メインの外円
         const outerCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -75,22 +87,25 @@
             
             // カスプ（境界線）
             const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            line.setAttribute("x1", 300 + 50 * Math.cos(rad)); // 内側を少し空ける
+            line.setAttribute("x1", 300 + 50 * Math.cos(rad));
             line.setAttribute("y1", 300 + 50 * Math.sin(rad));
             line.setAttribute("x2", 300 + 280 * Math.cos(rad));
             line.setAttribute("y2", 300 + 280 * Math.sin(rad));
             line.className.baseVal = "zodiac-line";
             base.appendChild(line);
 
-            // サイン名（簡易表示）
-            const textRad = (angle - 75) * Math.PI / 180;
-            const tx = 300 + 265 * Math.cos(textRad);
-            const ty = 300 + 265 * Math.sin(textRad);
+            // 星座記号（Astronomicon）
+            const textAngle = angle - 75; // 30度の真ん中に配置
+            const textRad = (textAngle) * Math.PI / 180;
+            const tx = 300 + 255 * Math.cos(textRad);
+            const ty = 300 + 255 * Math.sin(textRad);
+            
             const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
             txt.setAttribute("x", tx); txt.setAttribute("y", ty);
             txt.setAttribute("text-anchor", "middle");
-            txt.className.baseVal = "zodiac-text";
-            txt.textContent = signs[i];
+            txt.setAttribute("dominant-baseline", "central");
+            txt.className.baseVal = "zodiac-symbol";
+            txt.textContent = SYMBOLS[i];
             base.appendChild(txt);
         }
     }
@@ -98,24 +113,17 @@
     function draw() {
         const container = document.getElementById('rings-container');
         container.innerHTML = '';
-        
         for (let i = 0; i < 7; i++) {
             const date = document.getElementById(`date-${i}`).value;
             if (!date) continue;
-
-            const radius = 70 + (i * 28); // リングの間隔を調整
+            const radius = 70 + (i * 28);
             const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            ring.setAttribute("cx", 300);
-            ring.setAttribute("cy", 300);
-            ring.setAttribute("r", radius);
-            ring.setAttribute("stroke", COLORS[i]);
-            ring.setAttribute("stroke-width", "1.5");
-            ring.setAttribute("fill", "none");
-            ring.setAttribute("opacity", "0.6");
+            ring.setAttribute("cx", 300); ring.setAttribute("cy", 300); ring.setAttribute("r", radius);
+            ring.setAttribute("stroke", COLORS[i]); ring.setAttribute("stroke-width", "1.5");
+            ring.setAttribute("fill", "none"); ring.setAttribute("opacity", "0.6");
             container.appendChild(ring);
         }
     }
-
     initZodiac();
 </script>
 </body>
