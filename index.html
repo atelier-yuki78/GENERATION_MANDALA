@@ -36,6 +36,7 @@
     <div class="notice-text">明治6年（1873年）以前の生年月日は旧暦のため、グレゴリウス暦に変換してから入力してください。</div>
     <button class="btn-add" onclick="addGen()">+ 世代を追加</button>
     <div id="gen-container"></div>
+    <button style="margin-top:20px; font-size:0.6rem; color:var(--text-dim); background:none; border:none; cursor:pointer;" onclick="clearAllData()">※全入力をリセット</button>
 </div>
 <div id="viewport">
     <svg id="mandala" viewBox="0 0 500 500">
@@ -48,8 +49,12 @@
     const S_SYM = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const COLORS = ['#bf7fff', '#7f7fff', '#00d4ff', '#00ffa3', '#ffe57f', '#ff9f7f', '#ff7f9f'];
     
-    let generations = [{ id: 1, name: "", date: "", time: "12:00", isUnknown: false, city: "", hasData: false, planets: [] }];
+    // オートセーブから読み込み
+    let generations = JSON.parse(localStorage.getItem('mandalaData')) || [
+        { id: 1, name: "", date: "", time: "12:00", isUnknown: false, city: "", hasData: false, planets: [] }
+    ];
     
+    // 正しいファイル名になったworker.jsを呼び出し
     const worker = new Worker('worker.js');
     worker.onmessage = function(e) {
         const { id, planets } = e.data;
@@ -57,34 +62,48 @@
         if (g) {
             g.planets = planets;
             g.hasData = true;
+            saveData();
             updateMandala();
         }
     };
 
+    function saveData() {
+        localStorage.setItem('mandalaData', JSON.stringify(generations));
+    }
+
+    function clearAllData() {
+        if(confirm("データをすべて消して最初からやり直しますか？")) {
+            localStorage.removeItem('mandalaData');
+            location.reload();
+        }
+    }
+
     function addGen() {
         if (generations.length >= 7) return;
         generations.push({ id: Date.now(), name: "", date: "", time: "12:00", isUnknown: false, city: "", hasData: false, planets: [] });
+        saveData();
         renderUI();
     }
 
     function removeGen(id) {
         if (generations.length <= 1) return;
         generations = generations.filter(g => g.id !== id);
+        saveData();
         renderUI(); updateMandala();
     }
 
-    // 入力時に自動でWorkerへ送る
     function autoUpdate(id) {
         const g = generations.find(x => x.id === id);
         if (g && g.date) {
             worker.postMessage({ id: g.id, date: g.date, time: g.time, isUnknown: g.isUnknown });
         }
+        saveData();
     }
 
     function updateMandala() {
         const ringsBase = document.getElementById('rings-base'), zodiacLayer = document.getElementById('zodiac-layer'), genLayers = document.getElementById('generation-layers');
         ringsBase.innerHTML = ''; zodiacLayer.innerHTML = ''; genLayers.innerHTML = '';
-        const cx = 250, cy = 250, zR_in = 50, zR_out = 74, w = 24;
+        const cx = 250, cy = 250, zR_out = 74, w = 24;
 
         for (let i = 0; i <= 7; i++) {
             const r = zR_out + (i * w);
@@ -127,20 +146,26 @@
             <div class="gen-card" style="border-left: 5px solid ${idx===0?COLORS[0]:(g.hasData?COLORS[idx]:'#1a2230')}">
                 ${idx > 0 ? `<button class="remove-btn" onclick="removeGen(${g.id})">削除</button>` : ''}
                 <span class="label">名前</span>
-                <input type="text" value="${g.name}" placeholder="お名前" oninput="generations.find(x=>x.id===${g.id}).name=this.value">
+                <input type="text" value="${g.name||''}" placeholder="お名前" oninput="generations.find(x=>x.id===${g.id}).name=this.value; saveData()">
                 <span class="label">出生年月日</span>
-                <input type="date" value="${g.date}" onchange="const gx=generations.find(x=>x.id===${g.id}); gx.date=this.value; autoUpdate(${g.id})">
+                <input type="date" value="${g.date||''}" onchange="const gx=generations.find(x=>x.id===${g.id}); gx.date=this.value; autoUpdate(${g.id})">
                 <span class="label">出生時刻</span>
                 <div class="time-row">
-                    <input type="time" value="${g.time}" ${g.isUnknown?'disabled':''} onchange="const gx=generations.find(x=>x.id===${g.id}); gx.time=this.value; autoUpdate(${g.id})">
+                    <input type="time" value="${g.time||'12:00'}" ${g.isUnknown?'disabled':''} onchange="const gx=generations.find(x=>x.id===${g.id}); gx.time=this.value; autoUpdate(${g.id})">
                     <label class="checkbox-row"><input type="checkbox" ${g.isUnknown?'checked':''} onchange="const gx=generations.find(x=>x.id===${g.id}); gx.isUnknown=this.checked; renderUI(); autoUpdate(${g.id})"> 不明</label>
                 </div>
                 <span class="label">出生地 (市区町村)</span>
-                <input type="text" value="${g.city}" placeholder="市区町村名" oninput="generations.find(x=>x.id===${g.id}).city=this.value">
+                <input type="text" value="${g.city||''}" placeholder="市区町村名" oninput="generations.find(x=>x.id===${g.id}).city=this.value; saveData()">
             </div>
         `).join('');
     }
-    window.onload = () => { renderUI(); updateMandala(); };
+    
+    window.onload = () => { 
+        renderUI(); 
+        updateMandala();
+        // 保存されていたデータがあれば自動で計算させる
+        generations.forEach(g => { if(g.date) autoUpdate(g.id); });
+    };
 </script>
 </body>
 </html>
