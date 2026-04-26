@@ -1,5 +1,5 @@
-// 安定性の高い cdnjs からスイス暦ライブラリを読み込みます
-importScripts('https://cdnjs.cloudflare.com/ajax/libs/swisseph/2.10.8-1/swisseph.min.js');
+// 【重要】jsDelivrという非常に安定した配信元から計算機を読み込みます
+importScripts('https://cdn.jsdelivr.net/npm/swisseph@2.10.8-1/dist/swisseph.min.js');
 
 const PLANETS = [
     swisseph.SE_SUN,       // 0: 太陽 (Q)
@@ -16,18 +16,17 @@ const PLANETS = [
     swisseph.SE_CHIRON     // 11: キロン (q)
 ];
 
-// 天文暦データ（高精度計算のためのファイル）の取得先を設定
-swisseph.swe_set_ephe_path('https://cdnjs.cloudflare.com/ajax/libs/swisseph/2.10.8-1/ephe/');
+// 高精度な天文暦データの場所を指定
+swisseph.swe_set_ephe_path('https://cdn.jsdelivr.net/npm/swisseph@2.10.8-1/dist/ephe/');
 
 self.onmessage = function(e) {
     const { id, date, time, isUnknown } = e.data;
     if (!date) return;
 
-    // 日付と時刻の数値を整理
     const [year, month, day] = date.split('-').map(Number);
     const [hour, min] = time.split(':').map(Number);
     
-    // 日本標準時(UTC+9)を考慮して世界時(UT)に変換
+    // 時刻を世界時(UT)に変換（日本時間から9時間引く）
     const ut = (isUnknown ? 12 : hour) + (min / 60) - 9;
     
     // ユリウス日を計算して惑星位置を算出
@@ -36,16 +35,11 @@ self.onmessage = function(e) {
         let completed = 0;
 
         PLANETS.forEach((p, idx) => {
-            // 高精度フラグ（SEFLG_SPEED）を使用して計算
             swisseph.swe_calc_ut(jd, p, swisseph.SEFLG_SPEED, (res) => {
-                if (res.error) {
-                    console.error(`Error calculating planet ${p}:`, res.error);
-                }
-                
-                planetsData[idx] = res.longitude; // 黄経を格納
+                planetsData[idx] = res.longitude;
                 completed++;
 
-                // すべての天体の計算が終わったらメイン画面に送る
+                // 12個すべての天体の計算が終わったらメイン画面へ送信
                 if (completed === PLANETS.length) {
                     self.postMessage({ id, planets: planetsData });
                 }
