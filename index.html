@@ -13,15 +13,14 @@
         }
         body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
         #sidebar { width: 360px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 25px; z-index: 10; }
-        .notice-text { font-size: 0.75rem; color: #ff9f7f; line-height: 1.6; margin: 20px 0; padding: 12px; border: 1px solid rgba(255,159,127,0.3); border-radius: 8px; background: rgba(255,159,127,0.05); }
+        .notice-text { font-size: 0.7rem; color: #ff9f7f; line-height: 1.6; margin: 15px 0; padding: 10px; border: 1px solid rgba(255,159,127,0.3); border-radius: 8px; }
         .gen-card { background: rgba(5,7,10,0.8); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 18px; position: relative; }
         .label { font-size: 0.65rem; color: var(--accent); margin-bottom: 4px; margin-top: 10px; display: block; }
         input { background: #05070a; border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; outline: none; margin-top: 2px; }
-        input::placeholder { color: #334455; }
         .time-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
         .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-dim); cursor: pointer; }
-        .btn-update { width: 100%; padding: 12px; background: var(--accent); color: #000; border: none; border-radius: 8px; margin-top: 15px; cursor: pointer; font-weight: bold; }
         .btn-add { width: 100%; padding: 14px; background: transparent; border: 1px dashed var(--accent); color: var(--accent); cursor: pointer; border-radius: 8px; margin-bottom: 30px; }
+        .remove-btn { position: absolute; top: 15px; right: 15px; color: #ff4d4d; cursor: pointer; border: 1px solid #ff4d4d33; background: rgba(255,77,77,0.1); border-radius: 4px; padding: 2px 8px; font-size: 0.6rem; }
         #viewport { flex: 1; display: flex; justify-content: center; align-items: center; background: #000; }
         svg { width: 95%; height: 95%; max-width: 800px; }
         .astro-font { font-family: 'Astronomicon'; }
@@ -51,7 +50,6 @@
     
     let generations = [{ id: 1, name: "", date: "", time: "12:00", isUnknown: false, city: "", hasData: false, planets: [] }];
     
-    // Web Workerの初期化
     const worker = new Worker('worker.js');
     worker.onmessage = function(e) {
         const { id, planets } = e.data;
@@ -69,7 +67,14 @@
         renderUI();
     }
 
-    function triggerUpdate(id) {
+    function removeGen(id) {
+        if (generations.length <= 1) return;
+        generations = generations.filter(g => g.id !== id);
+        renderUI(); updateMandala();
+    }
+
+    // 入力時に自動でWorkerへ送る
+    function autoUpdate(id) {
         const g = generations.find(x => x.id === id);
         if (g && g.date) {
             worker.postMessage({ id: g.id, date: g.date, time: g.time, isUnknown: g.isUnknown });
@@ -120,16 +125,18 @@
         const container = document.getElementById('gen-container');
         container.innerHTML = generations.map((g, idx) => `
             <div class="gen-card" style="border-left: 5px solid ${idx===0?COLORS[0]:(g.hasData?COLORS[idx]:'#1a2230')}">
+                ${idx > 0 ? `<button class="remove-btn" onclick="removeGen(${g.id})">削除</button>` : ''}
                 <span class="label">名前</span>
                 <input type="text" value="${g.name}" placeholder="お名前" oninput="generations.find(x=>x.id===${g.id}).name=this.value">
                 <span class="label">出生年月日</span>
-                <input type="date" value="${g.date}" onchange="generations.find(x=>x.id===${g.id}).date=this.value">
+                <input type="date" value="${g.date}" onchange="const gx=generations.find(x=>x.id===${g.id}); gx.date=this.value; autoUpdate(${g.id})">
                 <span class="label">出生時刻</span>
                 <div class="time-row">
-                    <input type="time" value="${g.time}" ${g.isUnknown?'disabled':''} onchange="generations.find(x=>x.id===${g.id}).time=this.value">
-                    <label class="checkbox-row"><input type="checkbox" ${g.isUnknown?'checked':''} onchange="const gx=generations.find(x=>x.id===${g.id}); gx.isUnknown=this.checked; renderUI();"> 不明</label>
+                    <input type="time" value="${g.time}" ${g.isUnknown?'disabled':''} onchange="const gx=generations.find(x=>x.id===${g.id}); gx.time=this.value; autoUpdate(${g.id})">
+                    <label class="checkbox-row"><input type="checkbox" ${g.isUnknown?'checked':''} onchange="const gx=generations.find(x=>x.id===${g.id}); gx.isUnknown=this.checked; renderUI(); autoUpdate(${g.id})"> 不明</label>
                 </div>
-                <button class="btn-update" onclick="triggerUpdate(${g.id})">曼荼羅に反映</button>
+                <span class="label">出生地 (市区町村)</span>
+                <input type="text" value="${g.city}" placeholder="市区町村名" oninput="generations.find(x=>x.id===${g.id}).city=this.value">
             </div>
         `).join('');
     }
