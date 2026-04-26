@@ -4,10 +4,7 @@
     <meta charset="UTF-8">
     <title>GENERATION MANDALA NEO</title>
     <style>
-        @font-face { 
-            font-family: 'Astronomicon'; 
-            src: url('./fonts/Astronomicon.ttf') format('truetype'); 
-        }
+        @font-face { font-family: 'Astronomicon'; src: url('./fonts/Astronomicon.ttf') format('truetype'); }
         :root { 
             --bg: #030508; --panel: #0d121d; --accent: #00d4ff; --text: #e0e6ed;
             --text-dim: #4a5a70; --border: #1a2230; --ring-base: #1e2a3a;
@@ -16,14 +13,11 @@
         }
         body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
         #sidebar { width: 360px; background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 25px; z-index: 10; }
-        .notice-text { font-size: 0.7rem; color: #ff9f7f; line-height: 1.6; margin: 15px 0; padding: 10px; border: 1px solid rgba(255,159,127,0.3); border-radius: 8px; }
         .gen-card { background: rgba(5,7,10,0.8); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 18px; position: relative; }
         .label { font-size: 0.65rem; color: var(--accent); margin-bottom: 4px; margin-top: 10px; display: block; }
-        input { background: #05070a; border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; outline: none; margin-top: 2px; }
-        .time-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
-        .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-dim); cursor: pointer; }
-        .btn-add { width: 100%; padding: 14px; background: transparent; border: 1px dashed var(--accent); color: var(--accent); cursor: pointer; border-radius: 8px; margin-bottom: 30px; }
-        .remove-btn { position: absolute; top: 15px; right: 15px; color: #ff4d4d; cursor: pointer; border: 1px solid #ff4d4d33; background: rgba(255,77,77,0.1); border-radius: 4px; padding: 2px 8px; font-size: 0.6rem; }
+        input { background: #05070a; border: 1px solid var(--border); color: var(--text); padding: 10px; border-radius: 6px; font-size: 0.85rem; width: 100%; color: white; }
+        .btn-calc { width: 100%; padding: 12px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .btn-calc:hover { opacity: 0.8; }
         #viewport { flex: 1; display: flex; justify-content: center; align-items: center; background: #000; }
         svg { width: 95%; height: 95%; max-width: 800px; }
         .astro-font { font-family: 'Astronomicon', sans-serif; }
@@ -36,16 +30,13 @@
 <body>
 <div id="sidebar">
     <h1 style="font-size:1.1rem; color:var(--accent); letter-spacing:4px;">GENERATION MANDALA</h1>
-    <div class="notice-text">明治6年以前は旧暦のため、グレゴリウス暦に変換して入力してください。</div>
-    <button class="btn-add" onclick="addGen()">+ 世代を追加</button>
+    <button class="btn-add" onclick="addGen()" style="width:100%; padding:10px; background:none; border:1px dashed var(--accent); color:var(--accent); margin-bottom:20px;">+ 世代を追加</button>
     <div id="gen-container"></div>
-    <button style="margin-top:20px; font-size:0.6rem; color:var(--text-dim); background:none; border:none; cursor:pointer;" onclick="clearAllData()">※全入力をリセット</button>
+    <button style="margin-top:20px; font-size:0.6rem; color:var(--text-dim); background:none; border:none;" onclick="clearAllData()">※全リセット</button>
 </div>
 <div id="viewport">
     <svg id="mandala" viewBox="0 0 500 500">
-        <g id="rings-base"></g>
-        <g id="zodiac-layer"></g>
-        <g id="generation-layers"></g>
+        <g id="rings-base"></g><g id="zodiac-layer"></g><g id="generation-layers"></g>
     </svg>
 </div>
 
@@ -55,58 +46,46 @@
     const COLORS = ['#bf7fff', '#7f7fff', '#00d4ff', '#00ffa3', '#ffe57f', '#ff9f7f', '#ff7f9f'];
     
     let generations = JSON.parse(localStorage.getItem('mandalaData')) || [
-        { id: 1, name: "", date: "", time: "12:00", isUnknown: false, city: "", hasData: false, planets: [] }
+        { id: 1, name: "", date: "", time: "12:00", isUnknown: false, hasData: false, planets: [] }
     ];
     
-    const worker = new Worker('worker.js');
+    const worker = new Worker('worker.js?v=' + Date.now()); // キャッシュ回避策
     worker.onmessage = function(e) {
         const { id, planets } = e.data;
         const g = generations.find(x => x.id === id);
         if (g) {
-            g.planets = planets;
-            g.hasData = true;
-            saveData();
-            updateMandala();
+            g.planets = planets; g.hasData = true;
+            saveData(); renderUI(); updateMandala();
         }
     };
 
     function saveData() { localStorage.setItem('mandalaData', JSON.stringify(generations)); }
     function clearAllData() { if(confirm("リセットしますか？")) { localStorage.removeItem('mandalaData'); location.reload(); } }
 
+    function runCalc(id) {
+        const g = generations.find(x => x.id === id);
+        if (g && g.date) {
+            worker.postMessage({ id: g.id, date: g.date, time: g.time });
+        } else {
+            alert("日付を入力してください");
+        }
+    }
+
     function addGen() {
         if (generations.length >= 7) return;
-        generations.push({ id: Date.now(), name: "", date: "", time: "12:00", isUnknown: false, city: "", hasData: false, planets: [] });
+        generations.push({ id: Date.now(), name: "", date: "", time: "12:00", isUnknown: false, hasData: false, planets: [] });
         saveData(); renderUI();
     }
 
-    function removeGen(id) {
-        if (generations.length <= 1) return;
-        generations = generations.filter(g => g.id !== id);
-        saveData(); renderUI(); updateMandala();
-    }
-
-    function autoUpdate(id) {
-        const g = generations.find(x => x.id === id);
-        if (g && g.date) {
-            worker.postMessage({ id: g.id, date: g.date, time: g.time, isUnknown: g.isUnknown });
-        }
-        saveData();
-    }
-
     function updateMandala() {
-        const ringsBase = document.getElementById('rings-base'), 
-              zodiacLayer = document.getElementById('zodiac-layer'), 
-              genLayers = document.getElementById('generation-layers');
-        
+        const ringsBase = document.getElementById('rings-base'), zodiacLayer = document.getElementById('zodiac-layer'), genLayers = document.getElementById('generation-layers');
         ringsBase.innerHTML = ''; zodiacLayer.innerHTML = ''; genLayers.innerHTML = '';
         const cx = 250, cy = 250, zR_out = 74, w = 24;
 
-        // 背景の円と境界線
         for (let i = 0; i <= 7; i++) {
             const r = zR_out + (i * w);
             const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            ring.setAttribute("cx", cx); ring.setAttribute("cy", cy); ring.setAttribute("r", r);
-            ring.setAttribute("class", "mandala-line");
+            ring.setAttribute("cx", cx); ring.setAttribute("cy", cy); ring.setAttribute("r", r); ring.setAttribute("class", "mandala-line");
             ringsBase.appendChild(ring);
         }
         for (let i = 0; i < 12; i++) {
@@ -116,7 +95,6 @@
             l.setAttribute("x2", cx + 242 * Math.cos(rad)); l.setAttribute("y2", cy + 242 * Math.sin(rad));
             l.setAttribute("class", "cusp-line");
             ringsBase.appendChild(l);
-            
             const mRad = (180 - (i * 30 + 15)) * Math.PI / 180;
             const s = document.createElementNS("http://www.w3.org/2000/svg", "text");
             s.setAttribute("x", cx + 62 * Math.cos(mRad)); s.setAttribute("y", cy + 62 * Math.sin(mRad));
@@ -124,21 +102,16 @@
             s.textContent = S_SYM[i]; zodiacLayer.appendChild(s);
         }
 
-        // 天体の描画
         generations.forEach((g, idx) => {
-            if (!g.hasData || !g.planets.length) return;
+            if (!g.hasData) return;
             const r_c = zR_out + (idx * w) + w/2;
             g.planets.forEach((deg, pIdx) => {
                 const rad = (180 - deg) * Math.PI / 180;
                 const sym = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                sym.setAttribute("x", cx + r_c * Math.cos(rad)); 
-                sym.setAttribute("y", cy + r_c * Math.sin(rad));
-                sym.setAttribute("class", "astro-font planet-symbol"); 
-                sym.setAttribute("fill", COLORS[idx]);
-                sym.setAttribute("text-anchor", "middle"); 
-                sym.setAttribute("dominant-baseline", "middle");
-                sym.textContent = P_SYM[pIdx]; 
-                genLayers.appendChild(sym);
+                sym.setAttribute("x", cx + r_c * Math.cos(rad)); sym.setAttribute("y", cy + r_c * Math.sin(rad));
+                sym.setAttribute("class", "astro-font planet-symbol"); sym.setAttribute("fill", COLORS[idx]);
+                sym.setAttribute("text-anchor", "middle"); sym.setAttribute("dominant-baseline", "middle");
+                sym.textContent = P_SYM[pIdx]; genLayers.appendChild(sym);
             });
         });
     }
@@ -147,23 +120,15 @@
         const container = document.getElementById('gen-container');
         container.innerHTML = generations.map((g, idx) => `
             <div class="gen-card" style="border-left: 5px solid ${g.hasData ? COLORS[idx] : '#4a5a70'}">
-                ${idx > 0 ? `<button class="remove-btn" onclick="removeGen(${g.id})">削除</button>` : ''}
                 <span class="label">名前</span>
-                <input type="text" value="${g.name||''}" placeholder="お名前" oninput="generations.find(x=>x.id===${g.id}).name=this.value; saveData()">
+                <input type="text" value="${g.name||''}" oninput="generations.find(x=>x.id===${g.id}).name=this.value; saveData()">
                 <span class="label">出生年月日</span>
-                <input type="date" value="${g.date||''}" onchange="const gx=generations.find(x=>x.id===${g.id}); gx.date=this.value; autoUpdate(${g.id})">
-                <span class="label">出生時刻</span>
-                <div class="time-row">
-                    <input type="time" value="${g.time||'12:00'}" ${g.isUnknown?'disabled':''} onchange="const gx=generations.find(x=>x.id===${g.id}); gx.time=this.value; autoUpdate(${g.id})">
-                    <label class="checkbox-row"><input type="checkbox" ${g.isUnknown?'checked':''} onchange="const gx=generations.find(x=>x.id===${g.id}); gx.isUnknown=this.checked; renderUI(); autoUpdate(${g.id})"> 不明</label>
-                </div>
-                <span class="label">出生地 (市区町村)</span>
-                <input type="text" value="${g.city||''}" placeholder="市区町村名" oninput="generations.find(x=>x.id===${g.id}).city=this.value; saveData()">
+                <input type="date" value="${g.date||''}" onchange="generations.find(x=>x.id===${g.id}).date=this.value; saveData()">
+                <button class="btn-calc" onclick="runCalc(${g.id})">ホロスコープを作成</button>
             </div>
         `).join('');
     }
-    
-    window.onload = () => { renderUI(); updateMandala(); generations.forEach(g => { if(g.date) autoUpdate(g.id); }); };
+    window.onload = () => { renderUI(); updateMandala(); };
 </script>
 </body>
 </html>
