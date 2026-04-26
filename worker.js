@@ -1,10 +1,33 @@
-self.onmessage = function(e) {
-    const { id } = e.data;
-    // テスト用のダミー天体データ（10度、50度...に記号が出るはず）
-    const testPlanets = [10, 50, 90, 120, 150, 180, 210, 240, 270, 300, 330, 350];
+importScripts('https://unpkg.com/swisseph@2.10.8-1/dist/swisseph.min.js');
 
-    self.postMessage({
-        id: id,
-        planets: testPlanets
+const PLANETS = [
+    swisseph.SE_SUN, swisseph.SE_MOON, swisseph.SE_MERCURY, swisseph.SE_VENUS,
+    swisseph.SE_MARS, swisseph.SE_JUPITER, swisseph.SE_SATURN, swisseph.SE_URANUS,
+    swisseph.SE_NEPTUNE, swisseph.SE_PLUTO, swisseph.SE_TRUE_NODE, swisseph.SE_CHIRON
+];
+
+self.onmessage = function(e) {
+    const { id, date, time, isUnknown } = e.data;
+    if (!date) return;
+
+    const [year, month, day] = date.split('-').map(Number);
+    const [hour, min] = time.split(':').map(Number);
+    
+    // UTC+9 (日本時間) の調整
+    const ut = (isUnknown ? 12 : hour) + (min / 60) - 9;
+    
+    swisseph.swe_julday(year, month, day, ut, swisseph.SE_GREG_CAL, (jd) => {
+        const planetsData = [];
+        let completed = 0;
+
+        PLANETS.forEach((p, idx) => {
+            swisseph.swe_calc_ut(jd, p, swisseph.SEFLG_SPEED, (res) => {
+                planetsData[idx] = res.longitude;
+                completed++;
+                if (completed === PLANETS.length) {
+                    self.postMessage({ id, planets: planetsData });
+                }
+            });
+        });
     });
 };
