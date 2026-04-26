@@ -14,8 +14,8 @@
         
         #ui-panel { width: 350px; padding: 20px; background: rgba(255,255,255,0.05); border-right: 1px solid #333; overflow-y: auto; }
         
-        /* タイトルデザインの維持 */
-        h1 { font-family: serif; font-weight: lighter; letter-spacing: 0.2em; color: #e0e0e0; margin: 0 0 20px 0; }
+        /* タイトル：以前の青色に戻しました */
+        h1 { font-family: serif; font-weight: lighter; letter-spacing: 0.2em; color: #4a90e2; margin: 0 0 20px 0; }
 
         #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; position: relative; }
         
@@ -27,10 +27,11 @@
         .zodiac-ring { stroke: var(--gray-line); stroke-width: 1; fill: none; }
         .zodiac-line { stroke: var(--gray-line); stroke-width: 1; }
         
-        /* 星座記号：Astronomicon。中心に配置 */
+        /* 星座記号：すべて薄いグレー */
         .zodiac-symbol { 
             font-family: 'Astronomicon'; 
             font-size: 22px; 
+            fill: #777; 
             pointer-events: none; 
         }
     </style>
@@ -53,7 +54,6 @@
 <script>
     const COLORS = ["#8A2BE2", "#4B0082", "#0000FF", "#008000", "#FFFF00", "#FFA500", "#FF0000"];
     const SYMBOLS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
-    const SYMBOL_COLORS = ["#FF6666", "#FFB266", "#FFFF66", "#66FF66", "#66FFFF", "#6666FF", "#B266FF", "#FF66FF", "#FF66B2", "#C0C0C0", "#66FFB2", "#B2FF66"];
 
     const inputContainer = document.getElementById('inputs');
     for (let i = 0; i < 7; i++) {
@@ -71,7 +71,7 @@
     function initZodiac() {
         const base = document.getElementById('zodiac-base');
         
-        // 中心円（記号用）
+        // 中心円
         const innerC = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         innerC.setAttribute("cx", 300); innerC.setAttribute("cy", 300); innerC.setAttribute("r", 50);
         innerC.className.baseVal = "zodiac-ring";
@@ -83,12 +83,11 @@
         outerC.className.baseVal = "zodiac-ring";
         base.appendChild(outerC);
 
-        // 9時の位置（180度）から反時計回り
+        // 牡羊座(A)を9時の位置にするための回転角（180度）
         for (let i = 0; i < 12; i++) {
-            const angle = 180 + (i * 30);
-            const rad = (angle - 90) * Math.PI / 180;
+            const angle = 180 + (i * 30); 
+            const rad = (angle) * Math.PI / 180; // カスプ（境界線）
             
-            // カスプ（中心から外円まで）
             const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
             line.setAttribute("x1", 300); line.setAttribute("y1", 300);
             line.setAttribute("x2", 300 + 290 * Math.cos(rad));
@@ -96,9 +95,9 @@
             line.className.baseVal = "zodiac-line";
             base.appendChild(line);
 
-            // 星座記号の配置
+            // 記号の配置（30度の真ん中）
             const textAngle = angle + 15;
-            const textRad = (textAngle - 90) * Math.PI / 180;
+            const textRad = (textAngle) * Math.PI / 180;
             const tx = 300 + 32 * Math.cos(textRad);
             const ty = 300 + 32 * Math.sin(textRad);
             
@@ -106,7 +105,6 @@
             txt.setAttribute("x", tx); txt.setAttribute("y", ty);
             txt.setAttribute("text-anchor", "middle");
             txt.setAttribute("dominant-baseline", "central");
-            txt.setAttribute("fill", SYMBOL_COLORS[i]);
             txt.className.baseVal = "zodiac-symbol";
             txt.textContent = SYMBOLS[i];
             base.appendChild(txt);
